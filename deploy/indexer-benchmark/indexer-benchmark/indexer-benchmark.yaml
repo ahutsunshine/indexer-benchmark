@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: indexer-benchmark
+  name: indexer-benchmark
+  namespace: kube-system
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: indexer-benchmark
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        io.sherlock.logs/namespace: tess-controlplane
+      creationTimestamp: null
+      labels:
+        app: indexer-benchmark
+        application.tess.io/name: kubesystem
+        applicationinstance.tess.io/name: default-appinstance
+    spec:
+      containers:
+      - command:
+        - sh
+        - -c
+        - indexer benchmark --namespace=ns-10000 --qps-pattern=1:2:4:8:16:32:64 --total-duration=5m
+          --wait-duration=3m --kubeconfig=/var/kube/kubeconfig
+        image: hub.tess.io/tessio/indexer-benchmark:v0.0.1
+        imagePullPolicy: Always
+        name: indexer-benchmark
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /var/kube
+          name: indexer-apiserver-kubeconfig
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        runAsUser: 0
+      serviceAccount: tess-master
+      serviceAccountName: tess-master
+      terminationGracePeriodSeconds: 10
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: indexer-apiserver-kubeconfig
+        name: indexer-apiserver-kubeconfig
